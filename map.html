@@ -1,0 +1,1436 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <title>Filter features within map view</title>
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"></script>
+
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.6.3/css/all.css">
+    <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet" />
+
+    <script src="https://api.mapbox.com/mapbox-gl-js/v1.11.1/mapbox-gl.js"></script>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v1.11.1/mapbox-gl.css" rel="stylesheet" />
+    <script src="https://d3js.org/d3-dsv.v1.min.js"></script>
+
+    <script
+        src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v4.2.0/mapbox-gl-geocoder.min.js"></script>
+    <link rel="stylesheet"
+        href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v4.2.0/mapbox-gl-geocoder.css"
+        type="text/css" />
+
+    <style>
+        .map-overlay {
+            position: absolute;
+            bottom: 0;
+            right: -20px;
+            background: rgba(255, 255, 255, 0.8);
+            margin-right: 20px;
+            font-family: Arial, sans-serif;
+            overflow: auto;
+            border-radius: 3px;
+            padding: 20px;
+        }
+
+
+        #features {
+            top: 0;
+            height: 100px;
+            margin-top: 20px;
+            width: 250px;
+        }
+
+        #legend {
+            padding: 10px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            line-height: 18px;
+            height: 150px;
+            margin-bottom: 40px;
+            width: 100px;
+        }
+
+        .legend-key {
+            display: inline-block;
+            border-radius: 20%;
+            width: 10px;
+            height: 10px;
+            margin-right: 5px;
+        }
+
+        input:focus,
+        textarea:focus,
+        select:focus {
+            outline: none;
+        }
+
+        #message {
+            position: absolute;
+            width: 97%;
+            background-color: white;
+            opacity: 0.8;
+            z-index: 1000;
+            top: 0px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 60vh;
+            font-size: 40px;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        #map {
+            height: 60vh;
+            width: 100%;
+        }
+
+        #loading {
+            position: absolute;
+            background-color: white;
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            width: 50%;
+            height: 400px;
+            margin: auto;
+            border: 1px solid gray;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px;
+        }
+
+        #container {
+            display: flex;
+            justify-content: space-between;
+            height: 100vh;
+        }
+
+        .col-side {
+            flex: 0 0 450px;
+        }
+
+        #col2 {
+            flex: 1;
+        }
+
+
+        .main {
+            width: 50%;
+            margin: 50px auto;
+        }
+
+        .form-group .form-control {
+            padding-left: 2.375rem;
+        }
+
+        .form-group .form-control-icon {
+            position: absolute;
+            z-index: 2;
+            display: block;
+            width: 2.375rem;
+            height: 2.375rem;
+            line-height: 2.375rem;
+            text-align: center;
+            pointer-events: none;
+            color: #aaa;
+        }
+
+        .card {
+            margin: 10px;
+        }
+
+        .card-header {
+            padding: .25rem 1.25rem;
+            background-color: white;
+            border: 1px solid #eee;
+        }
+
+
+        table.dltrc {
+            margin-top: 10px;
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0px;
+            border: solid #ccc 1px;
+            border-radius: 8px;
+        }
+
+        tr.dlheader {
+            text-align: center;
+            font-weight: bold;
+            border-left: solid #ccc 1px;
+            padding: 2px
+        }
+
+        td.dlheader {
+            background: white;
+            text-align: center;
+            font-weight: bold;
+            border-left: solid #ccc 1px;
+            border-radius: 0px;
+            padding: 2px;
+            color: black
+        }
+
+        tr.headerdlinfo,
+        td.headerdlinfo {
+            text-align: center;
+            border-left: solid #ccc 1px;
+            border-top: solid #ccc 1px;
+            padding: 2px;
+            background-color: white;
+            color: black;
+        }
+
+        tr.dlinfo,
+        td.dlinfo {
+            text-align: center;
+            border-left: solid #ccc 1px;
+            border-top: solid #ccc 1px;
+            padding: 2px
+        }
+
+        td.dlinfo:first-child,
+        td.dlheader:first-child {
+            border-left: none;
+        }
+
+        td.dlheader:first-child {
+            border-radius: 5px 0 0 0;
+        }
+
+        td.dlheader:last-child {
+            border-radius: 0 5px 0 0;
+        }
+
+        .nav-pills .nav-link.active,
+        .nav-pills .show>.nav-link {
+            color: #fff;
+            background-color: #F58020;
+        }
+
+
+        /* SLIDRE PART  */
+        .container {
+            margin: 0 auto;
+            width: 500px;
+        }
+
+        input[type='range'] {
+            width: 100%;
+        }
+
+        .btn-warning {
+            color: white;
+            background: #F58020;
+            border: 1px solid #F58020;
+        }
+
+        .bbt {
+            color: white;
+            display: block;
+            margin-top: 5px;
+            outline: none;
+        }
+
+        .bbt:hover {
+            color: white;
+            outline: none;
+        }
+
+
+        /*Chrome*/
+
+        @media screen and (-webkit-min-device-pixel-ratio:0) {
+            input[type='range'] {
+                overflow: hidden;
+                -webkit-appearance: none;
+                background-color: #cacaca;
+                border-radius: 10px;
+            }
+
+            input[type='range']::-webkit-slider-runnable-track {
+                height: 20px;
+                -webkit-appearance: none;
+                color: #F58020;
+                margin-top: -1px;
+            }
+
+            input[type='range']::-webkit-slider-thumb {
+                width: 20px;
+                -webkit-appearance: none;
+                height: 20px;
+                cursor: ew-resize;
+                background: #6d6d6d;
+                border-radius: 10px;
+            }
+        }
+
+        /** FF*/
+        input[type="range"]::-moz-range-progress {
+            background-color: #F58020;
+        }
+
+        input[type="range"]::-moz-range-track {
+            background-color: #cacaca;
+        }
+
+        /* IE*/
+        input[type="range"]::-ms-fill-lower {
+            background-color: #F58020;
+        }
+
+        input[type="range"]::-ms-fill-upper {
+            background-color: #cacaca;
+        }
+
+
+
+        /* ANIMATION PART */
+        figure {
+            margin: 0;
+            transform: translate(-50%, -50%) rotate(0deg) scale(1.4, 1.4);
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            border-radius: 150px;
+            box-sizing: border-box;
+            animation: rotation 20s infinite linear;
+        }
+
+        figure div:after {
+            content: "";
+            width: 40px;
+            height: 40px;
+            border: 1px solid #fff;
+            box-sizing: border-box;
+            position: absolute;
+            left: 20px;
+            top: 20px;
+            animation: shuffle 2s infinite;
+        }
+
+
+
+
+        figure div:nth-child(1):after {
+            animation-delay: -0.5s;
+            background: url(https://w7.pngwing.com/pngs/262/276/png-transparent-facebook-logo-facebook-computer-icons-social-media-logo-logo-facebook-blue-text-trademark.png);
+            background-size: 40px 40px;
+        }
+
+        figure div:nth-child(2) {
+            transform: rotate(45deg);
+        }
+
+        figure div:nth-child(2):after {
+            animation-delay: -1s;
+            background: url(https://c7.hotpng.com/preview/708/574/481/social-media-computer-icons-snapchat-logo-snapchat.jpg);
+            background-size: 40px 40px;
+        }
+
+        figure div:nth-child(3) {
+            transform: rotate(90deg)
+        }
+
+        figure div:nth-child(3):after {
+            animation-delay: -1.5s;
+            background: url(https://media.glassdoor.com/sqll/33473/us-census-bureau-squarelogo.png);
+            background-size: 40px 40px;
+        }
+
+        figure div:nth-child(4) {
+            transform: rotate(135deg)
+        }
+
+        figure div:nth-child(4):after {
+            animation-delay: -2s;
+            background: url(https://logodix.com/logo/13329.jpg);
+            background-size: 40px 40px;
+        }
+
+        figure div:nth-child(5) {
+            transform: rotate(180deg)
+        }
+
+        figure div:nth-child(5):after {
+            animation-delay: -2.5s;
+            background: url(https://w7.pngwing.com/pngs/262/276/png-transparent-facebook-logo-facebook-computer-icons-social-media-logo-logo-facebook-blue-text-trademark.png);
+            background-size: 40px 40px;
+        }
+
+        figure div:nth-child(6) {
+            transform: rotate(225deg)
+        }
+
+        figure div:nth-child(6):after {
+            animation-delay: -3s;
+            background: url(https://c7.hotpng.com/preview/708/574/481/social-media-computer-icons-snapchat-logo-snapchat.jpg);
+            background-size: 40px 40px;
+        }
+
+        figure div:nth-child(7) {
+            transform: rotate(270deg)
+        }
+
+        figure div:nth-child(7):after {
+            animation-delay: -3.5s;
+            background: url(https://media.glassdoor.com/sqll/33473/us-census-bureau-squarelogo.png);
+            background-size: 40px 40px;
+        }
+
+        figure div:nth-child(8) {
+            transform: rotate(315deg)
+        }
+
+        figure div:nth-child(8):after {
+            animation-delay: -4;
+            background: url(https://logodix.com/logo/13329.jpg);
+            background-size: 40px 40px;
+        }
+
+        @keyframes rotation {
+            100% {
+                transform: translate(-50%, -50%) rotate(-360deg) scale(1.4, 1.4);
+            }
+        }
+
+        @keyframes shuffle {
+            50% {
+                transform: scale(0.4, 0.4) rotate(-90deg);
+                border-radius: 50%;
+            }
+        }
+
+        #open_popup {
+            position: absolute;
+            height: 80px;
+            line-height: 80px;
+            width: 80px;
+            font-size: 2em;
+            font-weight: bold;
+            border-radius: 50%;
+            background-color: #4CAF50;
+            border: 0px solid;
+            color: white;
+            text-align: center;
+            cursor: pointer;
+            bottom: 0px;
+            z-index: 1000;
+            margin: 10px;
+            right: 0px;
+            box-shadow: 8px 8px 7px #aaaaaa;
+        }
+
+        #open_popup:focus {
+            outline: none;
+        }
+
+        .contact_button {
+            color: white;
+            background: #F58020;
+            display: inline-block;
+            margin-top: 5px;
+            border: 1px solid #F58020;
+            outline: none;
+            border-radius: 6px;
+            padding: 5px 8px;
+            width:200px;
+            text-decoration: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <button id="open_popup">?</button>
+
+    <!-- Modal -->
+    <div class="modal fade" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <h3>Cookie less media planner</h3>
+                    <p>
+                        Goldfish Ads is introducing the first ever cookie-less media planner.
+                        That breaks down walled gardens with traditional data used in untraditional ways.
+                    </p>
+                    <h3>Demo Instructions</h3>
+                    <p>
+                    <ol>
+                        <li>Select a custom Goldfish Audience (comprised of different cookie-less data sets)</li>
+                        <li>Adjust the reach relevance slider</li>
+                        <li>Check avials for platforms of interest</li>
+                        <li>Contact us to see how we can help</li>
+                    </ol>
+                    </p>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <div id="container">
+
+        <div class="col-side m-3">
+            <ul class="nav nav-pills mb-3" id="pills-tab" role="tablist">
+                <li class="nav-item">
+                    <a class="nav-link active p-2" id="pills-audience-tab" data-toggle="pill" href="#pills-audience"
+                        role="tab" aria-controls="pills-audience" aria-selected="true"><i
+                            class="fas fa-user-friends"></i> Audience</a>
+                </li>
+
+                <li class="nav-item">
+                    <a class="nav-link  p-2" id="pills-Markets-tab" data-toggle="pill" href="#pills-markets" role="tab"
+                        aria-controls="pills-markets" aria-selected="false"><i class="fas fa-globe-americas"></i>
+                        Markets</a>
+                </li>
+
+                <li class="nav-item">
+                    <a class="nav-link p-2" id="pills-inventory-tab" data-toggle="pill" href="#pills-inventory"
+                        role="tab" aria-controls="pills-inventory" aria-selected="false"><i class="fas fa-store"></i>
+                        Inventory</a>
+                </li>
+
+            </ul>
+            <div class="tab-content" id="pills-tabContent">
+                <div class="tab-pane fade " id="pills-markets" role="tabpanel">
+                    <h4>Markets</h4>
+
+
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="exampleCheck1" checked>
+                        <label class="form-check-label" for="exampleCheck1">National Campaign</label>
+                    </div>
+                    States/Region
+                    <div class="form-group">
+                        <span class="fas fa-lock form-control-icon"></span>
+                        <input type="text" class="form-control" placeholder="Search..." disabled>
+                    </div>
+                    DMAs
+                    <div class="form-group">
+                        <span class="fas fa-lock form-control-icon"></span>
+                        <input type="text" class="form-control" placeholder="Search..." disabled>
+                    </div>
+                    Counties
+                    <div class="form-group">
+                        <span class="fas fa-lock form-control-icon"></span>
+                        <input type="text" class="form-control" placeholder="Search..." disabled>
+                    </div>
+                    Postal Codes
+                    <div class="form-group">
+                        <span class="fas fa-lock form-control-icon"></span>
+                        <input type="text" class="form-control" placeholder="Search..." disabled>
+                    </div>
+                    Congressional Districts
+                    <div class="form-group">
+                        <span class="fas fa-lock form-control-icon"></span>
+                        <input type="text" class="form-control" placeholder="Search..." disabled>
+                    </div>
+
+
+                    <h6>Current Markets</h6>
+                    <p>Cencus Block Groups: 220,333</p>
+                    <p>Population: 328,200,200</p>
+
+                </div>
+
+                <div class="tab-pane fade show active" id="pills-audience" role="tabpanel">
+
+                    <div id="accordion">
+                        <div class="card">
+                            <div class="card-header" id="headingOne">
+                                <h5 class="mb-0">
+                                    <button class="btn btn-link collapsed" data-toggle="collapse"
+                                        data-target="#collapseOne" aria-controls="collapseOne">
+                                        Goldfish Custom Audience
+                                    </button>
+                                </h5>
+                            </div>
+
+                            <div id="collapseOne" class="collapse show" aria-labelledby="headingOne"
+                                data-parent="#accordion">
+                                <div class="card-body" id="buttonsDiv">
+
+
+
+
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header" id="headingTwo">
+                                <h5 class="mb-0">
+                                    <button class="btn btn-link collapsed" data-toggle="collapse"
+                                        data-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+                                        POIs
+                                    </button>
+                                </h5>
+                            </div>
+                            <div id="collapseTwo" class="collapse" aria-labelledby="headingTwo"
+                                data-parent="#accordion">
+                                <div class="card-body">
+                                    Analyze and target over 2-million Points of Interest.
+
+                                    <div class="p-1">
+                                        <div class="form-group">
+                                            <strong>Parameters</strong>
+                                            <span class="fas fa-lock form-control-icon"></span>
+                                            <input type="text" class="form-control" placeholder="Search By Name"
+                                                disabled="">
+                                        </div>
+                                        <div class="form-group">
+                                            <strong>Categories</strong>
+                                            <span class="fas fa-lock form-control-icon"></span>
+                                            <input type="text" class="form-control" placeholder="Search..." disabled="">
+                                        </div>
+                                        <button class="btn btn-primary" disabled>Search POIs</button>
+                                    </div>
+
+
+
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header" id="headingThree">
+                                <h5 class="mb-0">
+                                    <button class="btn btn-link collapsed" data-toggle="collapse"
+                                        data-target="#collapseThree" aria-expanded="false"
+                                        aria-controls="collapseThree">
+                                        Household Data
+                                    </button>
+                                </h5>
+                            </div>
+                            <div id="collapseThree" class="collapse" aria-labelledby="headingThree"
+                                data-parent="#accordion">
+                                <div class="card-body">
+                                    Query over 50 million household data points.”
+                                    <div class="p-1">
+                                        <div class="form-group">
+                                            <strong>Demographics</strong>
+                                            <span class="fas fa-lock form-control-icon"></span>
+                                            <input type="text" class="form-control" placeholder="Search..." disabled="">
+                                        </div>
+                                        <div class="form-group">
+                                            <strong>Behaviors</strong>
+                                            <span class="fas fa-lock form-control-icon"></span>
+                                            <input type="text" class="form-control" placeholder="Search..." disabled="">
+                                        </div>
+                                        <div class="form-group">
+                                            <strong>Income</strong>
+                                            <span class="fas fa-lock form-control-icon"></span>
+                                            <input type="text" class="form-control" placeholder="Search..." disabled="">
+                                        </div>
+                                        <button class="btn btn-primary" disabled>Search </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <div class="card">
+                            <div class="card-header" id="headingFour">
+                                <h5 class="mb-0">
+                                    <button class="btn btn-link collapsed" data-toggle="collapse"
+                                        data-target="#collapseFour" aria-expanded="false" aria-controls="collapseFour">
+                                        Events - GeoSwap
+                                    </button>
+                                </h5>
+                            </div>
+                            <div id="collapseFour" class="collapse" aria-labelledby="headingThree"
+                                data-parent="#accordion">
+                                <div class="card-body">
+                                    Beta - Target the times and location of real-world events that align with your
+                                    audience.
+                                    <div class="p-1">
+                                        <div class="form-group">
+                                            <strong>Categories</strong>
+                                            <span class="fas fa-lock form-control-icon"></span>
+                                            <input type="text" class="form-control" placeholder="Search By Name"
+                                                disabled="">
+                                        </div>
+                                        <div class="form-row">
+                                            <div class="form-group col-md-6">
+                                                <strong>Date range</strong>
+                                                <span class="fas fa-lock form-control-icon"></span>
+                                                <input type="text" class="form-control" placeholder="Start date"
+                                                    disabled="">
+                                            </div>
+                                            <div class="form-group col-md-6">
+                                                <strong>&nbsp;</strong>
+                                                <span class="fas fa-lock form-control-icon"></span>
+                                                <input type="text" class="form-control" placeholder="End date"
+                                                    disabled="">
+                                            </div>
+                                        </div>
+                                        <button class="btn btn-primary" disabled>Search events</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header" id="headingFour">
+                                <h5 class="mb-0">
+                                    <button class="btn btn-link collapsed" data-toggle="collapse"
+                                        data-target="#collapseFive" aria-expanded="false" aria-controls="collapseFive">
+                                        Facebook
+                                    </button>
+                                </h5>
+                            </div>
+                            <div id="collapseFive" class="collapse" aria-labelledby="headingThree"
+                                data-parent="#accordion">
+                                <div class="card-body">
+                                    Take a Facebook campaign and find corresponding DOOH inventory to maximize your
+                                    audience reach.
+                                    <div class="p-1">
+                                        <div class="form-group">
+                                            <strong>Select Facebook Ad Account</strong>
+                                            <span class="fas fa-lock form-control-icon"></span>
+
+                                            <select id="inputState" class="form-control" disabled>
+                                                <option selected>Choose...</option>
+                                                <option>...</option>
+                                            </select>
+
+
+                                        </div>
+                                        <div class="form-group">
+                                            <strong>Select Facebook Campaign</strong>
+                                            <span class="fas fa-lock form-control-icon"></span>
+                                            <select id="inputState" class="form-control" disabled>
+                                                <option selected>Choose...</option>
+                                                <option>...</option>
+                                            </select>
+                                        </div>
+                                        <button class="btn btn-primary" disabled>Search </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header" id="headingFour">
+                                <h5 class="mb-0">
+                                    <button class="btn btn-link collapsed" data-toggle="collapse"
+                                        data-target="#collapseGoogle" aria-expanded="false"
+                                        aria-controls="collapseGoogle">
+                                        Google Analytics
+                                    </button>
+                                </h5>
+                            </div>
+                            <div id="collapseGoogle" class="collapse" aria-labelledby="headingThree"
+                                data-parent="#accordion">
+                                <div class="card-body">
+                                    Easily turn your Google Analytics data into action
+                                    <div class="p-1">
+                                        <div class="form-group">
+                                            <strong>Select Google Account</strong>
+                                            <span class="fas fa-lock form-control-icon"></span>
+                                            <select id="inputState" class="form-control" disabled>
+                                                <option selected>Choose...</option>
+                                                <option>...</option>
+                                            </select>
+                                        </div>
+                                        <button class="btn btn-primary" disabled>Search </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header" id="headingFour">
+                                <h5 class="mb-0">
+                                    <button class="btn btn-link collapsed" data-toggle="collapse"
+                                        data-target="#collapseIRI" aria-expanded="false" aria-controls="collapseIRI">
+                                        IRI Product Data
+                                    </button>
+                                </h5>
+                            </div>
+                            <div id="collapseIRI" class="collapse" aria-labelledby="headingThree"
+                                data-parent="#accordion">
+                                <div class="card-body">
+                                    Utilize IRI product data in campaign creation.
+                                    <div class="p-1">
+
+                                        <div class="form-group">
+                                            <strong>Categories</strong>
+                                            <span class="fas fa-lock form-control-icon"></span>
+                                            <input type="text" class="form-control" placeholder="Search..." disabled="">
+                                        </div>
+                                        <button class="btn btn-primary" disabled>Search</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+
+                    </div>
+                </div>
+                <div class="tab-pane fade" id="pills-inventory" role="tabpanel">
+
+                    <h4>Parameters</h4>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <button class="btn btn-link collapsed" data-toggle="collapse"
+                                    data-target="#collapseDOOH" aria-controls="collapseDOOH" aria-expanded="false">
+                                    DOOH
+                                </button>
+                            </h5>
+                        </div>
+
+                        <div id="collapseDOOH" class="collapse" aria-labelledby="headingOne" data-parent="#accordion">
+                            <div class="card-body">
+                                Publishers
+                                <div class="form-group">
+                                    <span class="fas fa-lock form-control-icon"></span>
+                                    <input type="text" class="form-control" placeholder="Search..." disabled>
+                                </div>
+                                Media Types
+                                <div class="form-group">
+                                    <span class="fas fa-lock form-control-icon"></span>
+                                    <input type="text" class="form-control" placeholder="Search..." disabled>
+                                </div>
+                                Venue Types
+                                <div class="form-group">
+                                    <span class="fas fa-lock form-control-icon"></span>
+                                    <input type="text" class="form-control" placeholder="Search..." disabled>
+                                </div>
+                                <h4>Search By Markets</h4>
+                                <div class="form-group">
+                                    <button type="button" class="btn btn-primary"><i class="fas fa-search"></i> Search
+                                        Markets</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <button class="btn btn-link collapsed" data-toggle="collapse" data-target="#collapse"
+                                    aria-controls="collapseFacebook" aria-expanded="false">
+                                    Facebook <span class="fas fa-lock form-control-icon"></span>
+                                </button>
+                            </h5>
+                        </div>
+                        <div id="collapseFacebook" class="collapse" aria-labelledby="headingOne"
+                            data-parent="#accordion">
+                            <div class="card-body">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <button class="btn btn-link collapsed" data-toggle="collapse" data-target="#collapse"
+                                    aria-controls="collapseFacebook" aria-expanded="false">
+                                    Google ads <span class="fas fa-lock form-control-icon"></span>
+                                </button>
+                            </h5>
+                        </div>
+                        <div id="collapseFacebook" class="collapse" aria-labelledby="headingOne"
+                            data-parent="#accordion">
+                            <div class="card-body">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <button class="btn btn-link collapsed" data-toggle="collapse" data-target="#collapse"
+                                    aria-controls="collapseFacebook" aria-expanded="false">
+                                    Snapchat <span class="fas fa-lock form-control-icon"></span>
+                                </button>
+                            </h5>
+                        </div>
+                        <div id="collapseFacebook" class="collapse" aria-labelledby="headingOne"
+                            data-parent="#accordion">
+                            <div class="card-body">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <button class="btn btn-link collapsed" data-toggle="collapse" data-target="#collapse"
+                                    aria-controls="collapseFacebook" aria-expanded="false">
+                                    Trade Desk <span class="fas fa-lock form-control-icon"></span>
+                                </button>
+                            </h5>
+                        </div>
+                        <div id="collapseFacebook" class="collapse" aria-labelledby="headingOne"
+                            data-parent="#accordion">
+                            <div class="card-body">
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+
+        <div class="col" id="col2">
+
+            <div id="map"></div>
+
+            <div id="message">
+                Please select an audience to load data
+            </div>
+
+
+            <div style="position: relative;">
+                <div class="map-overlay">
+
+                    <div><span class="legend-key" style="background-color: #00cc00"></span><span>>30</span></div>
+                    <div><span class="legend-key" style="background-color: #66ff33"></span><span>>70</span></div>
+                    <div><span class="legend-key" style="background-color: #ffcc00"></span><span>>100</span></div>
+                    <div><span class="legend-key" style="background-color: #ff6600"></span><span>>200</span></div>
+                    <div><span class="legend-key" style="background-color: #ff3300"></span><span>>250</span></div>
+                    <div><span class="legend-key" style="background-color: #cc0000"></span><span>>320</span></div>
+                </div>
+            </div>
+
+
+            <div id="overlay" style="visibility: hidden;">
+                <div style="display: flex; justify-content: space-between;">
+                    <div style="align-self: flex-end;">Reach Relevance Slider</div>
+                    <div>
+                       Index ><span id="demo"></span>
+                    </div>
+                </div>
+                <div class="slidecontainer">
+                    <input type="range" min="1" max="320" value="200" class="slider" id="myRange" style="width:100%;">
+                </div>
+                <p><span id="pop"></span></p>
+                <p><span id="avrZ"></span></p>
+
+
+                <div style="text-align: center;">
+                    <a href="https://www.goldfishads.com/contact-us" class="contact_button" target="_blank">Contact us</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+
+        const path = 'DATA/output_gf_with_index/';
+        const csvFiles = [
+            {
+                "fileName": "Baby Boomers.csv",
+                "layerPropName": "Baby_Boomers_z",
+                "buttonName": "Baby Boomers"
+            },
+            {
+                "fileName": "Black Moms.csv",
+                "layerPropName": "Black_Moms_z",
+                "buttonName": "Black Moms"
+            },
+            {
+                "fileName": "Car Owners.csv",
+                "layerPropName": "Car_Owners_z",
+                "buttonName": "Car Owners"
+            },
+            {
+                "fileName": "Children Under 10.csv",
+                "layerPropName": "Children_Under_10_z",
+                "buttonName": "Children Under 10"
+            },
+            {
+                "fileName": "College Students.csv",
+                "layerPropName": "College_Students_z",
+                "buttonName": "College Students"
+            },
+            {
+                "fileName": "Daily Commuters.csv",
+                "layerPropName": "Daily_Commuters_z",
+                "buttonName": "Daily Commuters"
+            },
+            {
+                "fileName": "Females.csv",
+                "layerPropName": "Females_z",
+                "buttonName": "Females"
+            },
+            {
+                "fileName": "High Value Household.csv",
+                "layerPropName": "High_Value_Household_z",
+                "buttonName": "High Value Household"
+            },
+            {
+                "fileName": "Hispanic Moms.csv",
+                "layerPropName": "Hispanic_Moms_z",
+                "buttonName": "Hispanic Moms"
+            },
+            {
+                "fileName": "Hispanic.csv",
+                "layerPropName": "Hispanic_z",
+                "buttonName": "Hispanic"
+            },
+            {
+                "fileName": "Income $100k - $150k.csv",
+                "layerPropName": "Income_$100k_$150k_z",
+                "buttonName": "Income $100k - $150k"
+            },
+            {
+                "fileName": "Income $25k - $50k.csv",
+                "layerPropName": "Income_$25k_$50k_z",
+                "buttonName": "Income $25k - $50k"
+            },
+            {
+                "fileName": "Income $50k - $100k.csv",
+                "layerPropName": "Income_$50k_$100k_z",
+                "buttonName": "Income $50k - $100k"
+            },
+            {
+                "fileName": "Income _ $150k.csv",
+                "layerPropName": "Income_$150k_z",
+                "buttonName": "Income _ $150k"
+            },
+            {
+                "fileName": "Income _ $25k.csv",
+                "layerPropName": "Income_$25k_z",
+                "buttonName": "Income _ $25k"
+            },
+            {
+                "fileName": "Males.csv",
+                "layerPropName": "Males_z",
+                "buttonName": "Males"
+            },
+            {
+                "fileName": "Millennials.csv",
+                "layerPropName": "Millennials_z",
+                "buttonName": "Millennials"
+            },
+            {
+                "fileName": "Networth _ $1,000,000.csv",
+                "layerPropName": "Networth_$1000000_z",
+                "buttonName": "Networth _ $1,000,000"
+            },
+            {
+                "fileName": "Own Home.csv",
+                "layerPropName": "Own_Home_z",
+                "buttonName": "Own Home"
+            },
+            {
+                "fileName": "Parents.csv",
+                "layerPropName": "Parents_z",
+                "buttonName": "Parents"
+            },
+            {
+                "fileName": "Rent Home.csv",
+                "layerPropName": "Rent_Home_z",
+                "buttonName": "Rent Home"
+            },
+            {
+                "fileName": "The Silent Generation.csv",
+                "layerPropName": "The_Silent_Generation_z",
+                "buttonName": "The Silent Generation"
+            },
+            {
+                "fileName": "Women 60 100k income.csv",
+                "layerPropName": "z",
+                "buttonName": "Women 60 100k income"
+            }
+        ]
+
+        const buttonsDiv = document.getElementById("buttonsDiv");
+        const closeDiv = document.getElementById("close");
+        const popDiv = document.getElementById("pop");
+        const avrZDiv = document.getElementById("avrZ");
+        const slider = document.getElementById("myRange");
+        const output = document.getElementById("demo");
+        const women_60_100 = document.getElementById("women_60_100");
+        let population = [];
+        let currentLayer;
+        let data = [];
+
+
+        fetch(path + 'all_population_census_data.csv')
+            .then(i => i.text())
+            .then(i => {
+                d3.csvParse(i).forEach(i => {
+                    population[i.id] = i.pop
+                });
+                console.log('population', population);
+            })
+
+        document.getElementById("open_popup").addEventListener("click", () => {
+            $('#exampleModal').modal('toggle');
+        })
+
+        const buttons = csvFiles.map(f => {
+            return `
+                <a class="dropdown-item csv-file" file_name="${f.fileName}" id="women_60_100" href="#">${f.buttonName}</a>
+            `
+        })
+        buttonsDiv.innerHTML = `
+            <div class="dropdown">
+            <button class="btn btn-warning dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                Select an audience
+            </button>
+            <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+              ${buttons.join("")}
+            </div>
+            </div >`
+
+
+        document.addEventListener("click", e => {
+            console.log('e.target', e.target);
+            const c = e.target
+
+            if (e.target.classList.contains('csv-file')) {
+
+
+                document.getElementById("message").style.display = "inline"
+                document.getElementById("dropdownMenuButton").innerText = c.innerText
+
+                //hightlight button
+                document.querySelectorAll(".csv-file").forEach(i => {
+                    i.classList.remove("btn-info")
+                    //i.classList.add("btn-warning")
+                })
+                //e.target.classList.remove("btn-warning")
+                e.target.classList.add("btn-info")
+                //
+
+                const fileName = path + e.target.getAttribute('file_name')
+                currentLayer = csvFiles.find(i => i.fileName === e.target.getAttribute('file_name'))
+
+                console.log('fileName', fileName);
+
+                document.getElementById("message").innerHTML = `
+                <figure>
+                    <div></div>
+                    <div></div>
+                    <div></div>
+                    <div></div>
+                    <div></div>
+                    <div></div>
+                    <div></div>
+                    <div></div>
+                </figure>`;
+
+                setTimeout(() => {
+                    document.getElementById("message").style.display = "none"
+                    document.getElementById("overlay").style.visibility = ""
+                    map.setLayoutProperty("women_60_100", 'visibility', 'visible');
+                }, 3000)
+
+                fetch(fileName)
+                    .then(i => i.text())
+                    .then(i => {
+                        data = d3.csvParse(i);
+                        console.log('data', data);
+
+                        // ADD population as name to every row from population variable                             
+                        data.forEach(i => {
+                            i.population = +population[+i.name]
+                        })
+
+                        setTimeout(() => {
+                            printTable(200)
+                        }, 1000);
+
+                        document.getElementById("overlay").style.visibility = "none"
+                    })
+            }
+        })
+
+
+
+        // women_60_100.addEventListener("click", () => {
+
+        //     document.getElementById("message").innerHTML = `
+        //     <figure>
+        //         <div></div>
+        //         <div></div>
+        //         <div></div>
+        //         <div></div>
+        //         <div></div>
+        //         <div></div>
+        //         <div></div>
+        //         <div></div>
+        //     </figure>`;
+
+        //     setTimeout(() => {
+        //         document.getElementById("message").style.display = "none"
+        //         document.getElementById("overlay").style.visibility = ""
+        //         map.setLayoutProperty("women_60_100", 'visibility', 'visible');
+
+        //     }, 3000)
+        //     //
+        // })
+
+        mapboxgl.accessToken = 'pk.eyJ1IjoiZ29sZGZpc2hhZHMiLCJhIjoiY2tleTV0d21tMGF5YTJzbWJ3YWEya2QxOCJ9.HHSQblJnhUHmPJIF-oqYrw';
+        var map = new mapboxgl.Map({
+            container: 'map',
+            // style: 'mapbox://styles/kdoggett887/ckcnrr7oe2von1jmfm0008iym',
+            style: 'mapbox://styles/mapbox/light-v10',
+            center: [-98, 38.88],
+            zoom: 3
+        });
+
+        // Add the geocoder to the map
+        var geocoder = new MapboxGeocoder({
+            // Initialize the geocoder
+            accessToken: mapboxgl.accessToken, // Set the access token
+            mapboxgl: mapboxgl, // Set the mapbox-gl instance
+            marker: false, // Do not use the default marker style
+            placeholder: 'Search for places', // Placeholder text for the search bar
+            //bbox: [-122.30937, 37.84214, -122.23715, 37.89838], // Boundary for Berkeley
+            // proximity: {
+            //     longitude: -122.25948,
+            //     latitude: 37.87221
+            // } // Coordinates of UC Berkeley
+        });
+        // Add the geocoder to the map
+        map.addControl(geocoder);
+        // Listen for the `result` event from the Geocoder // `result` event is triggered when a user makes a selection
+        //  Add a marker at the result's coordinates
+        geocoder.on('result', function (e) {
+            //map.getSource('single-point').setData(e.result.geometry);
+        });
+
+        map.addControl(new mapboxgl.NavigationControl());
+
+        map.on('load', function () {
+            map.addSource('data', {
+                'type': 'vector',
+                'url': 'mapbox://goldfishads.9c7nwegd'
+            });
+
+            map.addLayer({
+                'id': 'women_60_100',
+                'type': 'fill',
+                'source': 'data',
+                'source-layer': "joined_output",
+                'layout': {},
+                'paint': {
+                    'fill-color': [
+                        'interpolate',
+                        ['linear'],
+                        ['get', 'z'],
+                        30,
+                        '#00cc00',
+                        70,
+                        '#66ff33',
+                        100,
+                        '#ffcc00',
+                        200,
+                        '#ff6600',
+                        250,
+                        '#ff3300',
+                        320,
+                        '#cc0000',
+
+                    ],
+                    'fill-opacity': 0.8
+                }
+            });
+            map.setLayoutProperty("women_60_100", 'visibility', 'none');//hidden on init 
+
+            map.on("click", "women_60_100", (e) => {
+                var features = map.queryRenderedFeatures(e.point, { layers: ['women_60_100'] });
+                if (features) {
+                    console.log('features', features);
+                    console.log('props', features[0].properties);
+                    var uniqueFeatures = getUniqueFeatures(map.queryRenderedFeatures({ layers: ['women_60_100'] }), 'key');
+                    console.log('', uniqueFeatures);
+                }
+            })
+        });
+
+        output.innerHTML = slider.value;
+        slider.oninput = function () {
+            output.innerHTML = this.value;
+        }
+
+        slider.onchange = function () {
+            printTable(this.value)
+        }
+
+        function printTable(value) {
+
+            const layerPropName = currentLayer.layerPropName
+            console.log('layerPropName', layerPropName);
+
+            output.innerHTML = value;
+            map.setFilter('women_60_100', ['>=', ['number', ['get', layerPropName]], +value])
+
+            map.setPaintProperty('women_60_100', 'fill-color', [
+                'interpolate',
+                ['linear'],
+                ['get', layerPropName],
+                30,
+                '#00cc00',
+                70,
+                '#66ff33',
+                100,
+                '#ffcc00',
+                200,
+                '#ff6600',
+                250,
+                '#ff3300',
+                320,
+                '#cc0000',
+
+            ]);
+            //map.setFilter('women_60_100', ['any',['in',['get','name'], '200099714001' ],['in',['get','name'], '200510730001' ] ])
+
+            if (data.length > 0) {
+                let pop = 0;
+                let avrZ = 0;
+                const count = data.filter(i => +i.z >= +value)
+                console.log('count', count);
+                count.forEach(i => {
+                    pop = pop + (+i.population) || 0;
+                    avrZ = avrZ + (+i.z)
+                })
+
+                console.log('res', pop, avrZ, count.length);
+
+                if (count.length > 0) {
+
+                    // popDiv.innerHTML = "Population: " + pop.toLocaleString();
+                    // avrZDiv.innerHTML = "Average Z: " + (avrZ / count.length);
+
+                    const average = (avrZ / count.length).toFixed(2)
+
+                    const d =
+                        `
+                            <table class="dltrc" style="background:none">
+                                    <tbody>
+                                        <tr class="dlheader">
+                                            <td class="dlheader" rowspan="2">Audience</td>
+                                            <td class="dlheader" rowspan="2">Total Reach</td>
+                                            <td class="dlheader" rowspan="2">Avg Index</td>
+                                            <td class="dlheader" colspan="7">Avails (People)</td>
+                                        </tr>
+                                        <tr class="dlheader">
+                                            <td class="headerdlinfo">DOOH (Imps)</td>
+                                            <td class="headerdlinfo">Facebook</td>
+                                            <td class="headerdlinfo">Snapchat</td>
+                                            <td class="headerdlinfo">Google Ads</td>
+                                            <td class="headerdlinfo">Trade Desk</td>
+                                            
+                                            <td class="headerdlinfo">Twitter</td>
+                                        </tr>
+                                        <tr class="dlinfo2 hover02">
+                                            <td class="dlinfo hover02">Name</td>
+                                            <td class="dlinfo hover02">${pop.toLocaleString()}</td>
+                                            <td class="dlinfo hover02">${average}</td>
+                                            <td class="dlinfo hover02">${Math.round((pop * 0.6)).toLocaleString()}</td>
+                                            <td class="dlinfo hover02">${Math.round((pop * 0.92)).toLocaleString()}</td>
+                                            <td class="dlinfo hover02">${Math.round((pop * 0.53)).toLocaleString()}</td>
+                                            <td class="dlinfo hover02">${Math.round((pop * 0.86)).toLocaleString()}</td>
+                                            <td class="dlinfo hover02"><span class="fas fa-lock form-control-icon"></span></td>
+                                            <td class="dlinfo hover02"><span class="fas fa-lock form-control-icon"></span></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            `
+
+                    popDiv.innerHTML =
+                        `
+                            <table class="dltrc" style="background:none">
+                                <tbody>
+                                    <tr class="dlheader">
+                                            <td class="dlheader" rowspan="2">Audience</td>
+                                            <td class="dlheader" rowspan="2">Total Reach</td>
+                                            <td class="dlheader" rowspan="2">Avg Index</td>
+                                            <td class="dlheader" colspan="7">Avails (People)</td>
+                                        </tr>
+                                        <tr class="dlheader">
+                                            <td class="headerdlinfo">DOOH (Imps)</td>
+                                            <td class="headerdlinfo">Facebook</td>
+                                            <td class="headerdlinfo">Snapchat</td>
+                                            <td class="headerdlinfo">Google Ads</td>
+                                            <td class="headerdlinfo">Trade Desk</td>
+                                            
+                                            <td class="headerdlinfo">Twitter</td>
+                                        </tr>
+                                    <tr class="dlinfo2 hover02">
+                                        <td class="dlinfo hover02">Name</td>
+                                        <td class="dlinfo hover02">${pop.toLocaleString()}</td>
+                                        <td class="dlinfo hover02">${average}</td>
+                                        <td class="dlinfo hover02">-</td>
+                                        <td class="dlinfo hover02">-</td>
+                                        <td class="dlinfo hover02">-</td>
+                                        <td class="dlinfo hover02">-</td>
+                                        <td class="dlinfo hover02"><span class="fas fa-lock form-control-icon"></span></td>
+                                        <td class="dlinfo hover02"><span class="fas fa-lock form-control-icon"></span></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        `
+                    setTimeout(() => {
+                        popDiv.innerHTML = d;
+                    }, 400);
+
+                } else {
+                    popDiv.innerHTML = "Population: Empty"
+                    avrZDiv.innerHTML = "Average Z: Empty"
+                }
+            }
+        }
+
+
+        function getUniqueFeatures(array, comparatorProperty) {
+            var existingFeatureKeys = {};
+            // Because features come from tiled vector data, feature geometries may be split
+            // or duplicated across tile boundaries and, as a result, features may appear
+            // multiple times in query results.
+            var uniqueFeatures = array.filter(function (el) {
+                if (existingFeatureKeys[el.properties[comparatorProperty]]) {
+                    return false;
+                } else {
+                    existingFeatureKeys[el.properties[comparatorProperty]] = true;
+                    return true;
+                }
+            });
+            return uniqueFeatures;
+        }
+
+        $(document).ready(function () {
+            $('#exampleModal').modal('toggle');
+        });
+
+        $(window).on("load resize", function () {
+            // Get the current width of the slider
+            var sliderWidth = $('[type=range]').width();
+            // Remove previously created style elements
+            $('.custom-style-element-related-to-range').remove();
+            // Add our updated styling
+            $('<style class="custom-style-element-related-to-range">input[type="range"]::-webkit-slider-thumb { box-shadow: -' + (sliderWidth) + 'px 0 0 ' + (sliderWidth - 4) + 'px;}<style/>').appendTo('head');
+        });
+
+
+    </script>
+
+</body>
+
+</html>
